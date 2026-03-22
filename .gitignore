@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+
+# Data files
+data/*.db
+data/*.csv
+
+# Models
+models/*.pkl
+
+# Virtual environments
+venv/
+.env
