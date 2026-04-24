@@ -1,39 +1,40 @@
-# Byte-compiled / optimized / DLL files
+# ===============================
+# FICHIERS PYTHON
+# ===============================
 __pycache__/
 *.py[cod]
+*.pyo
 
-# C extensions
+# ===============================
+# EXTENSIONS / BINAIRES
+# ===============================
 *.so
 
-# Distribution / packaging
-.Python
+# ===============================
+# ENVIRONNEMENTS VIRTUELS
+# ===============================
+.venv/
 env/
+
+# ===============================
+# BUILD / DISTRIBUTION
+# ===============================
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
 .eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
 *.egg-info/
-.installed.cfg
 *.egg
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
+# ===============================
+# LOGS
+# ===============================
+*.log
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# ===============================
+# TESTS / COUVERTURE
+# ===============================
 htmlcov/
 .tox/
 .coverage
@@ -43,47 +44,55 @@ nosetests.xml
 coverage.xml
 *.cover
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# DotEnv configuration
+# ===============================
+# CONFIGURATION
+# ===============================
 .env
 
-# Database
+# ===============================
+# BASES DE DONNÉES
+# ===============================
 *.db
 *.rdb
 
-# Pycharm
-.idea
-
-# VS Code
+# ===============================
+# IDE
+# ===============================
 .vscode/
-
-# Spyder
+.idea/
 .spyproject/
 
-# Jupyter NB Checkpoints
+# ===============================
+# JUPYTER
+# ===============================
 .ipynb_checkpoints/
 
-# exclude data from source control by default
-/data/
-
-# Mac OS-specific storage files
+# ===============================
+# SYSTÈME
+# ===============================
 .DS_Store
-
-# vim
 *.swp
 *.swo
 
-# Mypy cache
+# ===============================
+# CACHE PYTHON
+# ===============================
 .mypy_cache/
+
+# ===============================
+# DONNÉES (gestion via DVC)
+# ===============================
+data/*
+!data/processed/
+!data/processed/*.dvc
+!data/processed/.gitignore
+ 
+#===============================
+# DVC 
+# ===============================
+.dvc/tmp/
+===============================
+# MLflow 
+# ===============================
+mlartifacts/
+*.pkl
