@@ -2,6 +2,7 @@
 import numpy as np
 import joblib
 import pandas as pd
+import yaml
 
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
@@ -27,7 +28,7 @@ MODEL_PATH = MODELS_DIR / "random_forest_model.pkl"
 EXPERIMENT_NAME = "weather_prediction"
 MODEL_NAME = "WeatherRandomForest"
 
-#  Features sélectionnées POUR L'ENTRAÎNEMENT DU MODÈLE
+# Features sélectionnées POUR L'ENTRAÎNEMENT DU MODÈLE
 FEATURES = [
     "Humidity3pm",
     "Humidity9am",
@@ -56,7 +57,7 @@ mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(EXPERIMENT_NAME)
 
 
-# --- Bruit Gaussien sur les features pour vérier les métriques ------------------------
+# --- Bruit Gaussien sur les features pour vérifier les métriques ------------------------
 def add_noise(df, features, noise_level=0.05):
     df_noisy = df.copy()
     for col in features:
@@ -71,10 +72,24 @@ def load_data():
     return df
 
 
+def get_dvc_data_version():
+    """
+    Récupère le hash MD5 du dataset versionné par DVC.
+    Ce hash permet de tracer la version exacte des données utilisée pour l'entraînement.
+    """
+    dvc_file = BASE_DIR.parent / "data" / "processed" / "weatherAUS_encoded.csv.dvc"
+
+    with open(dvc_file, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    return data["outs"][0]["md5"]
+
+
 # --- MAIN -----------------------------------------------------------------------------
 def main():
 
     df = load_data()
+    dvc_version = get_dvc_data_version()
     df = add_noise(df, FEATURES, noise_level=0.05)
 
     X = df[FEATURES]
@@ -104,13 +119,14 @@ def main():
         mlflow.log_param("n_estimators", 100)
         mlflow.log_param("max_depth", 10)
         mlflow.log_param("features", FEATURES)
+        mlflow.log_param("data_version_dvc", dvc_version)
         mlflow.log_metric("f1_score", f1)
         mlflow.log_text(classification_report(y_test, y_pred), "classification_report.txt")
         mlflow.sklearn.log_model(model, "model", registered_model_name=MODEL_NAME)
 
         joblib.dump(model, MODEL_PATH)
 
-    # --- CORRECTION ICI (UNIQUEMENT CETTE PARTIE) -------------------------------------
+    # --- COMPARAISON DES PERFORMANCES ENTRE MODELES -------------------------------------
 
     client = MlflowClient()
 
