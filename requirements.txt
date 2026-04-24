@@ -1,1 +1,13 @@
 
+numpy
+pandas
+scikit-learn
+joblib
+fastapi
+uvicorn
+pydantic
+mlflow
+sqlalchemy
+psycopg2-binary
+dvc
+pyyaml

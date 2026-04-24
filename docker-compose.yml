@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: weather-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: weather_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d weather_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    image: python:3.11-slim
+    container_name: weather-mlflow
+    working_dir: /mlflow
+    command: >
+      sh -c "pip install mlflow psycopg2-binary &&
+             mlflow server
+             --host 0.0.0.0
+             --port 5000
+             --backend-store-uri postgresql://postgres:admin@postgres:5432/weather_db
+             --default-artifact-root /mlflow/mlartifacts"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/mlartifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: weather-api
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: admin
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: weather_db
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:

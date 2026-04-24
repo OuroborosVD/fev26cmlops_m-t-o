@@ -1,4 +1,5 @@
 # Importation des modules
+import os
 import numpy as np
 import joblib
 import pandas as pd
@@ -9,16 +10,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, f1_score
 
-# NEW : Importation pour l'utilisation de MFLOW
 import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 
-# Connexion PostgreSQL via SQLAlchemy
 from sqlalchemy import create_engine
 
 
-# --- DEFINITION DE VARIABLES ------------------------------------------------------------
+# --- DEFINITION DES VARIABLES ---------------------------------------------------------
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = BASE_DIR / "models"
 
@@ -28,7 +28,6 @@ MODEL_PATH = MODELS_DIR / "random_forest_model.pkl"
 EXPERIMENT_NAME = "weather_prediction"
 MODEL_NAME = "WeatherRandomForest"
 
-# Features sélectionnées POUR L'ENTRAÎNEMENT DU MODÈLE
 FEATURES = [
     "Humidity3pm",
     "Humidity9am",
@@ -42,41 +41,49 @@ FEATURES = [
 ]
 
 
-# Configuration de connexion à POSTGRESQL et MLFLOW --------------------------------------
-DB_USER = "postgres"
-DB_PASSWORD = "admin"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "weather_db"
+# --- CONFIGURATION POSTGRESQL ET MLFLOW -----------------------------------------------
 
-engine = create_engine(f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "admin")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "weather_db")
 
-MLFLOW_TRACKING_URI = "http://localhost:5000"
+engine = create_engine(
+    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(EXPERIMENT_NAME)
 
 
-# --- Bruit Gaussien sur les features pour vérifier les métriques ------------------------
+# --- FONCTIONS ------------------------------------------------------------------------
+
 def add_noise(df, features, noise_level=0.05):
+    """Ajoute un bruit gaussien aux variables numériques pour simuler une variabilité des données."""
     df_noisy = df.copy()
+
     for col in features:
-        df_noisy[col] += np.random.normal(0, noise_level * df[col].std(), size=len(df))
+        df_noisy[col] += np.random.normal(
+            0,
+            noise_level * df[col].std(),
+            size=len(df)
+        )
+
     return df_noisy
 
 
-# --- LOADING DATA depuis POSTGRESQL --------------------------------------------------
 def load_data():
+    """Charge les données depuis la table PostgreSQL utilisée pour l'entraînement."""
     query = f"SELECT * FROM {TABLE_NAME}"
     df = pd.read_sql(query, engine)
     return df
 
 
 def get_dvc_data_version():
-    """
-    Récupère le hash MD5 du dataset versionné par DVC.
-    Ce hash permet de tracer la version exacte des données utilisée pour l'entraînement.
-    """
+    """Récupère le hash MD5 du dataset versionné par DVC."""
     dvc_file = BASE_DIR.parent / "data" / "processed" / "weatherAUS_encoded.csv.dvc"
 
     with open(dvc_file, "r", encoding="utf-8") as f:
@@ -86,8 +93,8 @@ def get_dvc_data_version():
 
 
 # --- MAIN -----------------------------------------------------------------------------
-def main():
 
+def main():
     df = load_data()
     dvc_version = get_dvc_data_version()
     df = add_noise(df, FEATURES, noise_level=0.05)
@@ -96,11 +103,14 @@ def main():
     y = df["RainTomorrow"]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y
     )
 
     with mlflow.start_run():
-
         model = RandomForestClassifier(
             n_estimators=100,
             max_depth=10,
@@ -120,13 +130,20 @@ def main():
         mlflow.log_param("max_depth", 10)
         mlflow.log_param("features", FEATURES)
         mlflow.log_param("data_version_dvc", dvc_version)
+
         mlflow.log_metric("f1_score", f1)
-        mlflow.log_text(classification_report(y_test, y_pred), "classification_report.txt")
-        mlflow.sklearn.log_model(model, "model", registered_model_name=MODEL_NAME)
+        mlflow.log_text(
+            classification_report(y_test, y_pred),
+            "classification_report.txt"
+        )
+
+        mlflow.sklearn.log_model(
+            model,
+            "model",
+            registered_model_name=MODEL_NAME
+        )
 
         joblib.dump(model, MODEL_PATH)
-
-    # --- COMPARAISON DES PERFORMANCES ENTRE MODELES -------------------------------------
 
     client = MlflowClient()
 
