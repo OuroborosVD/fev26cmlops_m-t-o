@@ -1,4 +1,4 @@
-# Importation des moduless
+# Importation des modules
 import pandas as pd
 import numpy as np
 import pytest
