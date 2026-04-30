@@ -1,7 +1,9 @@
 # Importation de modules
-from fastapi.testclient import TestClient
-from unittest.mock import patch
+from fastapi.testclient import TestClient # Simulation de requêtes HTTP
+from unittest.mock import patch # Permet de mocker une fonction
 from src.main import app
+
+# Objectif : Test l'API sans réseau réel
 
 # Instanciation d'un client
 client = TestClient(app)
@@ -21,8 +23,9 @@ def get_valid_payload():
     }
 
 
+# Test de Santé (check endpoint)
 def test_endpoint_origin():
-    """ Test du endpoint d'origine / """
+    """ Test du endpoint d'origine / donc de l'API"""
 
     # Requête GET
     response = client.get("/")
@@ -38,6 +41,7 @@ def test_endpoint_origin():
     assert data["documentation"] == "/docs"
 
 
+# Test de Predict par une fausse fonction (éviter le vrai chargement du ML)
 def test_predict_success():
     """ Test du endpoint "predict" en cas de succès """
 
@@ -58,6 +62,7 @@ def test_predict_success():
         assert response.json() == mock_response
 
 
+# Simulation d'une erreur volontairement
 def test_predict_failure():
     """ Test du endpoint "predict" en cas d'échec """    
 
