@@ -102,7 +102,6 @@ def test_training_success():
         assert response.json()["message"] == "Entraînement terminé avec succès."
 
 
-# Test du endpoint "training" en cas d'échec
 def test_training_failure():
     """ Test du endpoint "training" en cas d'échec """
 
