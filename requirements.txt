@@ -1,4 +1,3 @@
-
 numpy
 pandas
 scikit-learn
@@ -13,3 +12,4 @@ dvc
 pyyaml
 pytest
 httpx
+flake8
