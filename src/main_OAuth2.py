@@ -64,29 +64,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# ========================= RECUPERATION UTILISATEUR ======================
-
+# Récupération user
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    """
-    Décode le token JWT et récupère l’utilisateur courant.
-    """
-
+    """ Décode le token JWT et récupère l’utilisateur courant """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token invalide ou expiré",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+        headers={"WWW-Authenticate": "Bearer"},)
 
     try:
-
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-
         if username is None:
             raise credentials_exception
 
@@ -97,28 +85,18 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
     if user is None:
         raise credentials_exception
-
     return user
 
-
+# Récupération admin
 def get_current_admin(user: dict = Depends(get_current_user)):
-    """
-    Vérifie que l’utilisateur est admin.
-    """
+    """ Vérifie que l’utilisateur est admin """
 
     if user["role"] != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Admin only"
-        )
-
+        raise HTTPException(status_code=403, detail="Admin only")
     return user
 
-
-# ========================= SCHEMA PREDICTION =============================
-
+# Classe WeatherInput
 class WeatherInput(BaseModel):
-
     Humidity3pm: float = Field(..., example=55.0)
     Humidity9am: float = Field(..., example=70.0)
     Rainfall: float = Field(..., example=0.0)
@@ -129,97 +107,44 @@ class WeatherInput(BaseModel):
     Year: int = Field(..., example=2016)
     Month: int = Field(..., example=6)
 
-
-# ========================= ROUTE PUBLIQUE ================================
-
+# Endpoints
+# /
 @app.get("/")
 def root():
+    return {"message": "Weather Prediction API with OAuth2 is running", "documentation": "/docs"}
 
-    return {
-        "message": "Weather Prediction API with OAuth2 is running",
-        "documentation": "/docs"
-    }
-
-
-# ========================= LOGIN / TOKEN =================================
-
+# /token
 @app.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """
-    Endpoint de connexion.
+    """ Endpoint de connexion - Retourne un token JWT si les identifiants sont valides """
 
-    Retourne un token JWT si les identifiants sont valides.
-    """
-
-    user = authenticate_user(
-        form_data.username,
-        form_data.password
-    )
+    user = authenticate_user(form_data.username, form_data.password)
 
     if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password"
-        )
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    access_token_expires = timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user["username"], "role": user["role"]}, expires_delta=access_token_expires)
 
-    access_token = create_access_token(
-        data={
-            "sub": user["username"],
-            "role": user["role"]
-        },
-        expires_delta=access_token_expires
-    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
-
-
-# ========================= ENDPOINT PREDICT ==============================
-
+# /predict
 @app.post("/predict")
-def predict_rain(
-    data: WeatherInput,
-    user: dict = Depends(get_current_user)
-):
-    """
-    Endpoint de prédiction protégé par JWT.
-    """
-
+def predict_rain(data: WeatherInput, user: dict = Depends(get_current_user)):
+    """ Endpoint de prédiction protégé par JWT """
     try:
-
         input_data = data.model_dump()
-
         prediction = predict(input_data)
-
-        return {
-            "user": user["username"],
-            "prediction": prediction
-        }
+        return {"user": user["username"], "prediction": prediction}
 
     except Exception as error:
 
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur prédiction : {str(error)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erreur prédiction : {str(error)}")
 
-
-# ========================= ENDPOINT TRAINING =============================
-
+# /training
 @app.post("/training")
-def train_model(
-    user: dict = Depends(get_current_admin)
-):
-    """
-    Endpoint réservé aux administrateurs.
-    """
-
+def train_model(user: dict = Depends(get_current_admin)):
+    """ Endpoint réservé aux administrateurs """
     try:
 
         result = subprocess.run(
@@ -233,27 +158,12 @@ def train_model(
         )
 
         if result.returncode != 0:
+            raise HTTPException(status_code=500, detail={"message": "Erreur entraînement", "stderr": result.stderr})
 
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "message": "Erreur entraînement",
-                    "stderr": result.stderr
-                }
-            )
-
-        return {
-            "message": "Entraînement terminé avec succès",
-            "stdout": result.stdout
-        }
+        return {"message": "Entraînement terminé avec succès", "stdout": result.stdout}
 
     except HTTPException:
         raise
 
     except Exception as error:
-
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur inattendue : {str(error)}"
-        )
-```
+        raise HTTPException(status_code=500, detail=f"Erreur inattendue : {str(error)}")
