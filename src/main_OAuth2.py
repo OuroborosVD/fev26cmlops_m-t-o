@@ -13,112 +13,56 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from src.models.predict import predict
 
-
 # Configuration des chemins 
 BASE_DIR = Path(__file__).resolve().parents[1]
 TRAINING_SCRIPT = BASE_DIR / "src" / "models" / "training.py"
 
 
-# Clé secrète JWT
-# IMPORTANT :
-# En production, stocker dans une variable d’environnement.
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "super_secret_key_change_me"
-)
+# Clé secrète JWT dans une variable os
+SECRET_KEY = os.getenv("SECRET_KEY", "admin")
 
-# Algorithme utilisé pour signer le token JWT
+# Signature du token JWT + durée de validité
 ALGORITHM = "HS256"
-
-# Durée de validité du token
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Instanciation API
+app = FastAPI(title="Weather Prediction API", description="API sécurisée avec OAuth2")
 
-# ========================= INITIALISATION API ============================
-
-app = FastAPI(
-    title="Weather Prediction API - OAuth2",
-    description="API sécurisée avec OAuth2 + JWT",
-    version="2.0.0"
-)
-
-
-# ========================= HASH PASSWORD =================================
-
-# bcrypt permet de stocker des mots de passe hashés
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
+# Hashage avec bcrypt
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2PasswordBearer attend un endpoint /token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-# ========================= BASE UTILISATEURS =============================
+# Faux utilisateur
+fake_users_db = {"admin": {"username": "admin", "hashed_password": pwd_context.hash("admin"), "role": "admin"},
+                 "user": {"username": "user", "hashed_password": pwd_context.hash("user"), "role": "user"}
+                }
 
-# Exemple simple pour projet étudiant.
-# En production :
-# -> PostgreSQL
-# -> table users
-# -> mots de passe hashés en DB
-
-fake_users_db = {
-    "admin": {
-        "username": "admin",
-        "hashed_password": pwd_context.hash("admin123"),
-        "role": "admin"
-    },
-    "user": {
-        "username": "user",
-        "hashed_password": pwd_context.hash("user123"),
-        "role": "user"
-    }
-}
-
-
-# ========================= FONCTIONS AUTH ================================
-
+# Authentifications
 def verify_password(plain_password, hashed_password):
-    """Vérifie le mot de passe."""
+    """ Vérifie le mot de passe """
     return pwd_context.verify(plain_password, hashed_password)
-
 
 def authenticate_user(username: str, password: str):
     """Vérifie qu’un utilisateur existe et que son mot de passe est valide."""
-
     user = fake_users_db.get(username)
 
     if not user:
         return False
-
     if not verify_password(password, user["hashed_password"]):
         return False
-
     return user
 
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """
-    Crée un token JWT signé.
-    """
-
+    """ Création d'un token JWT signé """
     to_encode = data.copy()
-
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=15)
-    )
-
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(
-        to_encode,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
 
 # ========================= RECUPERATION UTILISATEUR ======================
 
