@@ -1,6 +1,4 @@
-```python
-# ========================= IMPORTS =====================================
-
+# Importations 
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 import subprocess
@@ -9,16 +7,11 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import (
-    OAuth2PasswordBearer,
-    OAuth2PasswordRequestForm
-)
+from fastapi.security import (OAuth2PasswordBearer, OAuth2PasswordRequestForm)
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-
 from pydantic import BaseModel, Field
-
 from src.models.predict import predict
 
 
