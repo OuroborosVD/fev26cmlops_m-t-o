@@ -1,24 +1,23 @@
 # Importations 
-from typing import Dict, Optional
-from datetime import datetime, timedelta
 import subprocess
 import sys
 import os
-from pathlib import Path
 
+from typing import Dict, Optional
+from datetime import datetime, timedelta
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import (OAuth2PasswordBearer, OAuth2PasswordRequestForm)
-
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from src.models.predict import predict
 
 
-# ========================= CONFIGURATION =================================
-
+# Configuration des chemins 
 BASE_DIR = Path(__file__).resolve().parents[1]
 TRAINING_SCRIPT = BASE_DIR / "src" / "models" / "training.py"
+
 
 # Clé secrète JWT
 # IMPORTANT :
