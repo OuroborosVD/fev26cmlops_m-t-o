@@ -13,3 +13,6 @@ pyyaml
 pytest
 httpx
 flake8
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
