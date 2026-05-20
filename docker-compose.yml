@@ -1,11 +1,18 @@
+# Lancement des services
 services:
+
+  # Base BD Postgres
   postgres:
     image: postgres:16
     container_name: weather-postgres
+
+    # Variables d'environnement
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: weather_db
+
+    # Exposition des ports & volumes
     ports:
       - "5432:5432"
     volumes:
@@ -15,7 +22,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+      
+  # MLFlow
   mlflow:
     image: python:3.11-slim
     container_name: weather-mlflow
@@ -34,7 +42,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
+        
+  # API
   api:
     build: .
     container_name: weather-api
@@ -52,6 +61,38 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_started
+  
+  # Service Prometheus  
+  prometheus:
+    image: prom/prometheus
+    container_name: weather-prometheus
+    
+    # exposition des ports
+    ports:
+      - "9090:9090"
+      
+    # volumes
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - api
+  
+  # Sercice Grafana
+  grafana:
+    image: grafana/grafana
+    container_name: weather-grafana
+    
+    # Exposition des ports
+    ports:
+      - "3000:3000"
+      
+    # Variables d'environnement
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:
