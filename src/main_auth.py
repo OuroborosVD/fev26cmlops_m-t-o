@@ -100,7 +100,7 @@ def predict_rain(data: WeatherInput, user: str = Depends(authenticate)) -> Dict:
 
 # Endpoint /training
 @app.post("/training")
-def train_model(user: str = Depends(authenticate_admin)  # Restriction admin) -> Dict:
+def train_model(user: str = Depends(authenticate_admin)) -> Dict:
     try:
         # Lancement du script d'entraînement dans un subprocess
         result = subprocess.run(
