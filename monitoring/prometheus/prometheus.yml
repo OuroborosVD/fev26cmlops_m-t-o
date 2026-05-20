@@ -1,0 +1,13 @@
+global:
+  # Lecture des métriques toutes les 5 secondes
+  scrape_interval: 5s
+
+scrape_configs:
+  # nom du service  
+  - job_name: "weather-api"
+
+    # Endpoint sollicité 
+    metrics_path: /metrics
+    # nom du service établi dans docker compose associé au port
+    static_configs:
+      - targets: ["api:8000"]
