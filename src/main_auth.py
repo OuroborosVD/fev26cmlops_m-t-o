@@ -12,19 +12,24 @@ from pydantic import BaseModel, Field
 
 from src.models.predict import predict
 
+# Importation de Prometheus
+from prometheus_fastapi_instrumentator import Instrumentator
 
-# --- CONFIGURATION DES CHEMINS ---------------------------------------------------------
+
+# Configuration des chemins
 BASE_DIR = Path(__file__).resolve().parents[1]
 TRAINING_SCRIPT = BASE_DIR / "src" / "models" / "training.py"
 
 
-# --- INITIALISATION API ---------------------------------------------------------------
+# Instanciation FastAPI
 app = FastAPI(
     title="Weather Prediction API",
     description="API d'entraînement et d'inférence pour la prédiction de pluie en Australie.",
     version="1.0.0"
 )
 
+# Mise en place des métriques pour Prometheus
+Instrumentator().instrument(app).expose(app)
 
 # --- CONFIG AUTHENTIFICATION ----------------------------------------------------------
 security = HTTPBasic()
@@ -35,8 +40,7 @@ API_PASSWORD = os.getenv("API_PASSWORD", "password")
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    """ Vérifie les identifiants
-        compare_digest évite certaines attaques """
+    """ Vérifie les identifiants, compare_digest évite certaines attaques """
     correct_username = secrets.compare_digest(credentials.username, API_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, API_PASSWORD)
 
@@ -45,12 +49,11 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
 
     return credentials.username
 
-# L’authentification admin sert à éviter l'accès provenant d'un utilisateur quelconque
+# L’authentification admin sert à éviter l'accès provenant d'un utilisateur lambda
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 
 def authenticate_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    """ Restreindre certains endpoints, seul l'utilisateur 'admin' est autorisé.
-    """
+    """ Restreindre certains endpoints, seul l'utilisateur 'admin' est autorisé """
     username = credentials.username
     password = credentials.password
 
@@ -63,9 +66,9 @@ def authenticate_admin(credentials: HTTPBasicCredentials = Depends(security)):
     return username
 
 
-# --- SCHEMA D'ENTREE POUR LA PREDICTION ----------------------------------------------
+# Classe d'entrée Weather prédéfinie
 class WeatherInput(BaseModel):
-    # Validation automatique des entrées (évite erreurs et injections)
+    # Validation automatique des entrées
     Humidity3pm: float = Field(..., example=55.0)
     Humidity9am: float = Field(..., example=70.0)
     Rainfall: float = Field(..., example=0.0)
@@ -77,21 +80,14 @@ class WeatherInput(BaseModel):
     Month: int = Field(..., example=6)
 
 
-# --- ROUTE DE BASE (publique) --------------------------------------------------------
+# Endpoint de base
 @app.get("/")
 def read_root() -> Dict[str, str]:
-    return {
-        "message": "Weather Prediction API is running",
-        "documentation": "/docs"
-    }
+    return {"message": "Weather Prediction API is running", "documentation": "/docs"}
 
-
-# --- ENDPOINT PREDICTION (avec Authentification) -------------------------------------
+# Endpoint /predict (avec Authentification !!)
 @app.post("/predict")
-def predict_rain(
-    data: WeatherInput,
-    user: str = Depends(authenticate)  # Authentification impliquée
-) -> Dict:
+def predict_rain(data: WeatherInput, user: str = Depends(authenticate)) -> Dict:
     try:
         # Conversion du modèle Pydantic en dict
         input_data = data.model_dump()
@@ -100,17 +96,11 @@ def predict_rain(
         return predict(input_data)
 
     except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur lors de la prédiction : {str(error)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction : {str(error)}")
 
-
-# --- ENDPOINT TRAINING (ADMIN UNIQUEMENT) --------------------------------------------
+# Endpoint /training
 @app.post("/training")
-def train_model(
-    user: str = Depends(authenticate_admin)  # Restriction admin
-) -> Dict:
+def train_model(user: str = Depends(authenticate_admin)  # Restriction admin) -> Dict:
     try:
         # Lancement du script d'entraînement dans un subprocess
         result = subprocess.run(
@@ -121,33 +111,17 @@ def train_model(
             errors="replace",
             cwd=str(BASE_DIR),
             check=False,
-            env={
-                **os.environ,
-                "PYTHONIOENCODING": "utf-8",  # Fix encodage (Windows / MLflow)
-                "PYTHONUTF8": "1"
-            }
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
         )
 
         # Gestion des erreurs du script
         if result.returncode != 0:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "message": "Erreur lors de l'entraînement du modèle.",
-                    "stderr": result.stderr
-                }
-            )
+            raise HTTPException(status_code=500, detail={"message": "Erreur lors de l'entraînement du modèle.", "stderr": result.stderr})
 
-        return {
-            "message": "Entraînement terminé avec succès.",
-            "stdout": result.stdout
-        }
+        return {"message": "Entraînement terminé avec succès.", "stdout": result.stdout}
 
     except HTTPException:
         raise
 
     except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur inattendue lors de l'entraînement : {str(error)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erreur inattendue lors de l'entraînement : {str(error)}")
