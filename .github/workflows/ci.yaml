@@ -1,42 +1,20 @@
-name: CI
-
-# Déclenchement à chaque push et pull request
-on:
-  push:
-  pull_request:
-
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    steps:      
-      # Récupération du repo
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Installation Python      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      
-      # Installation des dépendances      
+      # Installation des dépendances
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       # Action Linter
       - name: Run flake8
         run: |
-          flake8 src tests
-      
+          flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
+
       # Action tests unitaires
       - name: Run unit tests
         run: |
           pytest tests/
 
-      
-      # Action Build images Docker      
+      # Action Build images Docker
       - name: Build Docker image
         run: |
           docker build -t weather-api .
