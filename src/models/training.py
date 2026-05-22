@@ -37,7 +37,7 @@ FEATURES = [
     "MaxTemp",
     "Temp3pm",
     "Year",
-    "Month"
+    "Month",
 ]
 
 
@@ -55,28 +55,25 @@ engine = create_engine(
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-mlflow.set_experiment(EXPERIMENT_NAME)
-
 
 # --- FONCTIONS ------------------------------------------------------------------------
 
 def add_noise(df, features, noise_level=0.05):
-    """Ajoute un bruit gaussien aux variables numériques pour simuler une variabilité des données."""
+    """Ajoute un bruit gaussien aux variables numériques."""
     df_noisy = df.copy()
 
     for col in features:
         df_noisy[col] += np.random.normal(
             0,
             noise_level * df[col].std(),
-            size=len(df)
+            size=len(df),
         )
 
     return df_noisy
 
 
 def load_data():
-    """Charge les données depuis la table PostgreSQL utilisée pour l'entraînement."""
+    """Charge les données depuis PostgreSQL."""
     query = f"SELECT * FROM {TABLE_NAME}"
     df = pd.read_sql(query, engine)
     return df
@@ -84,7 +81,12 @@ def load_data():
 
 def get_dvc_data_version():
     """Récupère le hash MD5 du dataset versionné par DVC."""
-    dvc_file = BASE_DIR.parent / "data" / "processed" / "weatherAUS_encoded.csv.dvc"
+    dvc_file = (
+        BASE_DIR.parent
+        / "data"
+        / "processed"
+        / "weatherAUS_encoded.csv.dvc"
+    )
 
     with open(dvc_file, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
@@ -107,15 +109,18 @@ def main():
         y,
         test_size=0.2,
         random_state=42,
-        stratify=y
+        stratify=y,
     )
+
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    mlflow.set_experiment(EXPERIMENT_NAME)
 
     with mlflow.start_run():
         model = RandomForestClassifier(
             n_estimators=100,
             max_depth=10,
             random_state=42,
-            n_jobs=-1
+            n_jobs=-1,
         )
 
         model.fit(X_train, y_train)
@@ -134,13 +139,13 @@ def main():
         mlflow.log_metric("f1_score", f1)
         mlflow.log_text(
             classification_report(y_test, y_pred),
-            "classification_report.txt"
+            "classification_report.txt",
         )
 
         mlflow.sklearn.log_model(
             model,
             "model",
-            registered_model_name=MODEL_NAME
+            registered_model_name=MODEL_NAME,
         )
 
         joblib.dump(model, MODEL_PATH)
@@ -151,7 +156,9 @@ def main():
     latest_version = max(models_versions, key=lambda v: int(v.version))
 
     try:
-        model_prod = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}/Production")
+        model_prod = mlflow.sklearn.load_model(
+            f"models:/{MODEL_NAME}/Production"
+        )
 
         y_pred_old = model_prod.predict(X_test)
         old_f1 = f1_score(y_test, y_pred_old)
@@ -167,13 +174,13 @@ def main():
                     client.transition_model_version_stage(
                         name=MODEL_NAME,
                         version=version.version,
-                        stage="Archived"
+                        stage="Archived",
                     )
 
             client.transition_model_version_stage(
                 name=MODEL_NAME,
                 version=latest_version.version,
-                stage="Production"
+                stage="Production",
             )
         else:
             print("Le modèle en Production reste meilleur.")
@@ -184,7 +191,7 @@ def main():
         client.transition_model_version_stage(
             name=MODEL_NAME,
             version=latest_version.version,
-            stage="Production"
+            stage="Production",
         )
 
 
