@@ -48,19 +48,18 @@ def test_get_dvc_data_version():
 def test_main_training_pipeline():
     """ Test du pipeline d'entraînement sans dépendances externes"""
 
-    fake_df = pd.DataFrame({
-        "Humidity3pm": [10, 20, 30, 40],
-        "Humidity9am": [30, 40, 50, 60],
-        "Rainfall": [1, 2, 3, 4],
-        "WindGustSpeed": [5, 6, 7, 8],
-        "Pressure3pm": [1000, 1001, 1002, 1003],
-        "MaxTemp": [25, 26, 27, 28],
-        "Temp3pm": [20, 21, 22, 23],
-        "Year": [2020, 2021, 2022, 2023],
-        "Month": [5, 6, 7, 8],
-        "RainTomorrow": [0, 0, 1, 1]
-    })
-
+fake_df = pd.DataFrame({
+    "Humidity3pm": [10,20,30,40,50,60,70,80,90,100],
+    "Humidity9am": [30,40,50,60,70,80,90,100,110,120],
+    "Rainfall": [1,2,3,4,5,6,7,8,9,10],
+    "WindGustSpeed": [5,6,7,8,9,10,11,12,13,14],
+    "Pressure3pm": [1000,1001,1002,1003,1004,1005,1006,1007,1008,1009],
+    "MaxTemp": [25,26,27,28,29,30,31,32,33,34],
+    "Temp3pm": [20,21,22,23,24,25,26,27,28,29],
+    "Year": [2020]*10,
+    "Month": [1,2,3,4,5,6,7,8,9,10],
+    "RainTomorrow": [0,0,0,0,0,1,1,1,1,1]
+})
     mock_model = MagicMock()
     mock_model.predict.return_value = [1, 0]
 

@@ -50,8 +50,7 @@ def test_predict_success():
 
     # avec patch, on remplace temporairement la fonction predict, pour tester l'API et non le modèle
     # Pour rendre le test rapide fiable    
-    with patch("src.main.predict", return_value=mock_response):
-
+with patch("src.main_auth.predict", return_value=mock_response):
         response = client.post(
             "/predict",
             json=get_valid_payload(),
