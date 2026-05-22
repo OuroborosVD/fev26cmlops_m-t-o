@@ -1,7 +1,7 @@
 # Importation de modules
 from fastapi.testclient import TestClient  # Simulation de requêtes HTTP sans serveur réel
 from unittest.mock import patch  # Permet de remplacer temporairement des fonctions (mock)
-from src.main import app
+from src.main_auth import app
 
 # Objectif : tester l’API sans réseau réel
 

@@ -49,16 +49,16 @@ def test_main_training_pipeline():
     """ Test du pipeline d'entraînement sans dépendances externes"""
 
     fake_df = pd.DataFrame({
-        "Humidity3pm": [10, 20],
-        "Humidity9am": [30, 40],
-        "Rainfall": [1, 2],
-        "WindGustSpeed": [5, 6],
-        "Pressure3pm": [1000, 1001],
-        "MaxTemp": [25, 26],
-        "Temp3pm": [20, 21],
-        "Year": [2020, 2021],
-        "Month": [5, 6],
-        "RainTomorrow": [0, 1]
+        "Humidity3pm": [10, 20, 30, 40],
+        "Humidity9am": [30, 40, 50, 60],
+        "Rainfall": [1, 2, 3, 4],
+        "WindGustSpeed": [5, 6, 7, 8],
+        "Pressure3pm": [1000, 1001, 1002, 1003],
+        "MaxTemp": [25, 26, 27, 28],
+        "Temp3pm": [20, 21, 22, 23],
+        "Year": [2020, 2021, 2022, 2023],
+        "Month": [5, 6, 7, 8],
+        "RainTomorrow": [0, 0, 1, 1]
     })
 
     mock_model = MagicMock()
