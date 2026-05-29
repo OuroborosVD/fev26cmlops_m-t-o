@@ -9,3 +9,6 @@ models/
 *.pkl
 data/processed/weatherAUS_encoded.csv
 .ipynb_checkpoints/
+logs/
+plugins/
+mlflow.db
