@@ -1,9 +1,10 @@
 # Importation de modules
 from fastapi.testclient import TestClient  # Simulation de requêtes HTTP sans serveur réel
 from unittest.mock import patch  # Permet de remplacer temporairement des fonctions (mock)
+
 from src.main_auth import app
 
-# Objectif : tester l’API sans réseau réel
+# Objectif : tester l'API sans réseau réel
 
 # Instanciation d'un client
 client = TestClient(app)
@@ -48,9 +49,11 @@ def test_predict_success():
 
     mock_response = {"prediction": 1}
 
-    # avec patch, on remplace temporairement la fonction predict, pour tester l'API et non le modèle
-    # Pour rendre le test rapide fiable    
-with patch("src.main_auth.predict", return_value=mock_response):
+    # avec patch, on remplace temporairement la fonction predict,
+    # pour tester l'API et non le modèle
+    # Pour rendre le test rapide fiable
+    with patch("src.main_auth.predict", return_value=mock_response):
+
         response = client.post(
             "/predict",
             json=get_valid_payload(),
@@ -63,15 +66,15 @@ with patch("src.main_auth.predict", return_value=mock_response):
 
 # Simulation d'une erreur volontairement
 def test_predict_failure():
-    """ Test du endpoint "predict" en cas d'échec """    
+    """ Test du endpoint "predict" en cas d'échec """
 
     # On simule une erreur dans la fonction predict avec patch
-    with patch("src.main.predict", side_effect=Exception("boom")):
+    with patch("src.main_auth.predict", side_effect=Exception("boom")):
 
         response = client.post(
             "/predict",
             json=get_valid_payload(),
-            auth=AUTH  # AUTH 
+            auth=AUTH  # AUTH
         )
 
         assert response.status_code == 500
@@ -90,7 +93,7 @@ def test_training_success():
     })
 
     # On remplace par ce faux résultat
-    with patch("src.main.subprocess.run", return_value=mock_result):
+    with patch("src.main_auth.subprocess.run", return_value=mock_result):
 
         response = client.post(
             "/training",
@@ -113,7 +116,7 @@ def test_training_failure():
     })
 
     # On mock subprocess.run
-    with patch("src.main.subprocess.run", return_value=mock_result):
+    with patch("src.main_auth.subprocess.run", return_value=mock_result):
 
         response = client.post(
             "/training",

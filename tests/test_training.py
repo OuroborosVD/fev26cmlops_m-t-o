@@ -1,7 +1,5 @@
 # Importation des modules
 import pandas as pd
-import numpy as np
-import pytest
 
 from unittest.mock import patch, MagicMock
 from src.models.training import add_noise, get_dvc_data_version, main, FEATURES
@@ -48,31 +46,44 @@ def test_get_dvc_data_version():
 def test_main_training_pipeline():
     """ Test du pipeline d'entraînement sans dépendances externes"""
 
-fake_df = pd.DataFrame({
-    "Humidity3pm": [10,20,30,40,50,60,70,80,90,100],
-    "Humidity9am": [30,40,50,60,70,80,90,100,110,120],
-    "Rainfall": [1,2,3,4,5,6,7,8,9,10],
-    "WindGustSpeed": [5,6,7,8,9,10,11,12,13,14],
-    "Pressure3pm": [1000,1001,1002,1003,1004,1005,1006,1007,1008,1009],
-    "MaxTemp": [25,26,27,28,29,30,31,32,33,34],
-    "Temp3pm": [20,21,22,23,24,25,26,27,28,29],
-    "Year": [2020]*10,
-    "Month": [1,2,3,4,5,6,7,8,9,10],
-    "RainTomorrow": [0,0,0,0,0,1,1,1,1,1]
-})
+    fake_df = pd.DataFrame({
+        "Humidity3pm": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        "Humidity9am": [30, 40, 50, 60, 70, 80, 90, 100, 110, 120],
+        "Rainfall": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "WindGustSpeed": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        "Pressure3pm": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009],
+        "MaxTemp": [25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
+        "Temp3pm": [20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+        "Year": [2020] * 10,
+        "Month": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "RainTomorrow": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    })
+
     mock_model = MagicMock()
     mock_model.predict.return_value = [1, 0]
 
+    mock_version = MagicMock()
+    mock_version.version = "1"
+    mock_version.current_stage = "Production"
+
     with patch("src.models.training.load_data", return_value=fake_df), \
          patch("src.models.training.add_noise", return_value=fake_df), \
-         patch("src.models.training.MlflowClient"), \
+         patch("src.models.training.get_dvc_data_version", return_value="123abc"), \
+         patch("src.models.training.MlflowClient") as mock_client, \
+         patch("src.models.training.mlflow.set_tracking_uri"), \
+         patch("src.models.training.mlflow.set_experiment"), \
          patch("src.models.training.mlflow.start_run"), \
          patch("src.models.training.mlflow.sklearn.log_model"), \
          patch("src.models.training.mlflow.log_param"), \
          patch("src.models.training.mlflow.log_metric"), \
          patch("src.models.training.mlflow.log_text"), \
-         patch("src.models.training.mlflow.sklearn.load_model", return_value=mock_model):
+         patch("src.models.training.mlflow.sklearn.load_model", return_value=mock_model), \
+         patch("src.models.training.RandomForestClassifier", return_value=mock_model), \
+         patch("src.models.training.joblib.dump"):
+
+        mock_client.return_value.search_model_versions.return_value = [
+            mock_version
+        ]
 
         # On vérifie juste que le pipeline s'exécute sans erreur
         main()
-           
