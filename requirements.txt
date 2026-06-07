@@ -18,5 +18,3 @@ passlib[bcrypt]
 python-multipart
 prometheus-fastapi-instrumentator
 prometheus-client
-streamlit
-requests
