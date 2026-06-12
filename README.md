@@ -1,53 +1,127 @@
-Project Name
+# Projet MLOps - Prédiction de pluie en Australie
 ==============================
 
-This project is a starting Pack for MLOps projects based on the subject "movie_recommandation". It's not perfect so feel free to make some modifications on it.
+Objectif : prédire la pluie de demain
 
-Project Organization
-------------
+Les tâches :
 
-    ├── LICENSE
-    ├── README.md          <- The top-level README for developers using this project.
-    ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
-    │
-    ├── logs               <- Logs from training and predicting
-    │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
-    │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
-    │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
-    │
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   ├── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │   │   └── visualize.py
-    │   └── config         <- Describe the parameters used in train_model.py and predict_model.py
+- Ré-utilisation d'un dataset provenant d'un projet précédent (weatherAUS_encoded.csv), dont les données sont prétraitées
+- Entraînement et inférence d'un modèle ML : Random Forest
+- Suivi des expériences avec MLflow + enregistrementes des Runs
+- Versionnement des datasets avec DVC
+- API d'inférence développée avec FastAPI
+- Authentification avec Basic Auth (OAuth2 ayant été étudié)
+- Dockerisation
+- Intégration et déploiement continus (CI/CD) avec GitHub Actions
+- Monitoring des performances avec Prometheus & Grafana
+- Interface utilisateur avec Streamlit
+
+Attention : l'arborescence se base sur une structure initiale existante, seuls les élèments marqués <- ont été utilisés.
+
+Arborescence des fichiers
+
+.
+├── Dockerfile                             <- Image Docker de l'API FastAPI
+├── Dockerfile.streamlit                   <- Image Docker de l'application Streamlit
+├── LICENSE
+├── README.md
+├── data
+│   └── processed
+│       ├── weatherAUS_encoded.csv         <- Dataset du projet
+│       └── weatherAUS_encoded.csv.dvc     <- Versionnement DVC
+│
+├── docker-compose.yml                     <- Orchestration des services Docker
+├── init_predictions.py                    <- Script d'initialisation (Entrainement du modèle et lancement de prédictions)
+├── monitoring
+│   ├── grafana
+│   │   └── dashboards
+│   └── prometheus
+│       └── prometheus.yml                 <- Configuration Prometheus
+│
+├── notebooks
+├── pytest.ini
+├── references
+├── reports
+│   └── figures
+│
+├── requirements.txt                       <- Installation des Dépendances Python
+│
+├── src
+│   ├── __init__.py
+│   │
+│   ├── config
+│   │
+│   ├── data
+│   │   ├── load_postgres.py               <- Chargement des données dans PostgreSQL (avec weatherAUS encoded.csv)
+│   │   └── make_dataset.py
+│   │
+│   ├── features
+│   │   └── build_features.py
+│   │
+│   ├── main.py                            <- FastAPI sans authentification
+│   ├── main_auth.py                       <- FastAPI avec authentification Basic Auth (celui utilisé durant tout le projet)
+│   └── main_OAuth2.py                     <- FastAPI avec authentification OAuth2
+│   │
+│   ├── models
+│   │   ├── training.py                    <- Entraînement d'un modèle Random Forest sur les données
+│   │   └── predict.py                     <- Prédictions données par ce modèle
+│   │
+│   ├── visualization
+│       └── visualize.py
+│
+├── streamlit_app.py                       <- Interface Streamlit pour utiliser l'API
+│
+└── tests                                  <- Tests Unitaires
+    ├── test_load_postgres.py              <- Tests sur le chargement des données
+    ├── test_main.py                       <- Tests de l'API sans Authentificaition
+    ├── test_main_auth.py                  <- Tests de l'API avec Authentification Basic Auth
+    ├── test_predict.py                    <- Tests des prédictions
+    └── test_training.py                   <- Tests de l'entrainement du modèle
+
+
+
+Architecture MLOPS
+
+
+┌─────────────────────────────┐
+│ Données prétraitées         │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────────────────────┐
+│ Chargement des données dans PostgreSQL      │
+└──────────────┬──────────────────────────────┘
+               ▼
+┌─────────────────────────────────────────────┐
+│ Training (training.py)                      │
+│ • MLflow Tracking                           │
+│ • DVC Versioning                            │
+└──────────────┬──────────────────────────────┘
+               ▼
+┌─────────────────────────────────────────────┐
+│ MLflow Registry                             │
+│ • Comparaison des modèles                   │
+│ • Promotion du meilleur modèle              │
+└──────────────┬──────────────────────────────┘
+               ▼
+┌────────────────────────────────────────────--─┐
+│ API FastAPI                                   │
+│ • /training   • /predict   • /webhook/grafana │
+└──────────────┬─────────────────────────────--─┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│ Monitoring Prometheus & Grafana             │
+└──────────────┬──────────────────────────────┘
+               ▼
+┌─────────────────────────────────────────────┐
+│ Airflow                                     │
+│ • Détection de drift (Evidently)            │
+│ • Retraining automatique                    │
+│ • Orchestration pipelines ML                │
+└──────────────┬──────────────────────────────┘
+               ▼
+      ┌──────────────────┐
+      │    Streamlit     │
+      └──────────────────┘
 
 --------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
