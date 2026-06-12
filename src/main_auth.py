@@ -1,20 +1,25 @@
-# Importation des modules 
+# Importation des modules
 from typing import Dict
 import subprocess
 import sys
 import os
 from pathlib import Path
 import secrets
+import requests
+import threading
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
+from fastapi import Request
+import json
 
 from src.models.predict import predict
 
 # Importation de Prometheus
 from prometheus_fastapi_instrumentator import Instrumentator
-
+from prometheus_client import Counter, Histogram
+import time
 
 # Configuration des chemins
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -34,11 +39,20 @@ Instrumentator().instrument(app).expose(app)
 # --- CONFIG AUTHENTIFICATION ----------------------------------------------------------
 security = HTTPBasic()
 
+# Métriques Prometheus personnalisées
+weather_predictions_total = Counter("weather_predictions_total", "Nombre total de predictions")
+weather_success_predictions_total = Counter("weather_success_predictions_total", "Nombre de prédictions réussies")
+weather_rain_predictions_total = Counter("weather_rain_predictions_total", "Nombre de predictions pluie")
+weather_norain_predictions_total = Counter("weather_norain_predictions_total", "Nombre de predictions sans pluie")
+weather_prediction_errors_total = Counter("weather_prediction_errors_total", "Nombre d erreurs de prediction")
+weather_prediction_duration_seconds = Histogram("weather_prediction_duration_seconds", "Temps de prediction")
+
+
 # Récupération des credentials depuis les variables d’environnement
 API_USERNAME = os.getenv("API_USERNAME", "admin")
 API_PASSWORD = os.getenv("API_PASSWORD", "password")
 
-
+# Fonction d'authentification Basic
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     """ Vérifie les identifiants, compare_digest évite certaines attaques """
     correct_username = secrets.compare_digest(credentials.username, API_USERNAME)
@@ -85,20 +99,49 @@ class WeatherInput(BaseModel):
 def read_root() -> Dict[str, str]:
     return {"message": "Weather Prediction API is running", "documentation": "/docs"}
 
+# Endpoint Initialisation
+@app.post("/init")
+def init_data():
+    try:
+        subprocess.run([sys.executable, "init_predictions.py"], check=True)
+        return {"message": "Initialisation réussie"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Endpoint /predict (avec Authentification !!)
 @app.post("/predict")
-def predict_rain(data: WeatherInput, user: str = Depends(authenticate)) -> Dict:
-    try:
-        # Conversion du modèle Pydantic en dict
-        input_data = data.model_dump()
+def predict_rain(
+    data: WeatherInput,
+    user: str = Depends(authenticate)
+) -> Dict:
 
-        # Appel du modèle ML
-        return predict(input_data)
+    start_time = time.time()
+
+    try:
+        input_data = data.model_dump()
+        result = predict(input_data)
+
+        weather_predictions_total.inc()
+        weather_success_predictions_total.inc()
+
+        if result["prediction"] == 1:
+            weather_rain_predictions_total.inc()
+        else:
+            weather_norain_predictions_total.inc()
+
+        return result
 
     except Exception as error:
+
+        weather_prediction_errors_total.inc()
         raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction : {str(error)}")
 
-# Endpoint /training
+    finally:
+        weather_prediction_duration_seconds.observe(time.time() - start_time)
+
+
+# Endpoint /training - entrainement du modèle
 @app.post("/training")
 def train_model(user: str = Depends(authenticate_admin)) -> Dict:
     try:
@@ -125,3 +168,24 @@ def train_model(user: str = Depends(authenticate_admin)) -> Dict:
 
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Erreur inattendue lors de l'entraînement : {str(error)}")
+
+
+# Déclencheur de ré-entrainement
+def trigger_training():
+    try:
+        requests.post("http://api:8000/training", auth=("admin", "password"), timeout=300)
+    except Exception as e:
+        print("TRAINING ERROR:", e)
+
+# Endpoint Webhook - qui lance un ré-entrainement si détection d'une alerte par grafana
+@app.post("/webhook/grafana")
+async def grafana_webhook(request: Request):
+
+    data = await request.json()
+
+    print("GRAFANA ALERT:", data)
+    print("TRAINING TRIGGERED")
+
+    threading.Thread(target=trigger_training).start()
+
+    return {"status": "received"}
