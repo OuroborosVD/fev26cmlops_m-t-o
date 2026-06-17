@@ -68,7 +68,7 @@ Initialisation des données : lancer init_predictions.py pour un premier entraî
 - python3 init_predictions.py
 (ce fichier python lance src/training.py)
 
-# TESTS
+# Tests
 TESTS : il possible de tester une prédiction en ligne de commande sous Ubuntu
 curl -X POST http://localhost:8000/predict \
 -u admin:password \
