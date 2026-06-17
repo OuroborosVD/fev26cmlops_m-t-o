@@ -59,7 +59,7 @@ Les tâches :
 ---
 
 # Instructions d'installation
-- Cloner le repo : git clone <url-du-repository>
+- Cloner le repo : git clone '<url-du-repository>'
 - Lancer les composants avec Docker suivant la commande : docker compose up -d --build
 
 Vérifier les conteneurs : docker ps (Cette vérification peut se faire via Streamlit - Page 'API Status', indiquant les états fonctionnels dess composants)
